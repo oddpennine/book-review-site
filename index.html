@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f5f1e8" />
   <title>책갈피 — 나만의 독서 기록</title>
-  <link rel="stylesheet" href="styles.css?v=20260625" />
+  <link rel="stylesheet" href="styles.css?v=20260625-save1" />
 </head>
 <body>
   <div class="page-shell">
@@ -181,7 +181,45 @@
     </form>
   </dialog>
 
+  <dialog class="image-dialog" id="imageDialog" aria-labelledby="imageDialogTitle">
+    <div class="image-save-layout">
+      <section class="image-preview-pane" aria-label="저장 이미지 미리보기">
+        <span class="section-kicker">PREVIEW · 1080 × 1350</span>
+        <div class="image-preview-shell" id="imagePreviewShell">
+          <div class="image-preview-loading" aria-hidden="true">
+            <i></i><i></i><i></i>
+            <span>이미지를 만드는 중</span>
+          </div>
+          <img id="imagePreview" alt="" />
+        </div>
+      </section>
+
+      <section class="image-save-copy">
+        <button type="button" class="close-button image-close-button" id="closeImageDialog" aria-label="이미지 저장 화면 닫기">×</button>
+        <span class="section-kicker">IMAGE SAVE</span>
+        <h2 id="imageDialogTitle">독서 카드를<br />이미지로 간직해요.</h2>
+        <p class="image-save-intro"><strong id="imageBookTitle">책 제목</strong>의 감상과 문장을 밤하늘 카드 한 장에 담았습니다.</p>
+
+        <div class="image-spec-list" aria-label="이미지 정보">
+          <span>PNG</span>
+          <span>4:5 세로형</span>
+          <span>고화질</span>
+        </div>
+
+        <div class="image-save-note">
+          <span aria-hidden="true">↓</span>
+          <p><b>기기에 바로 저장돼요.</b><br />저장한 이미지는 인스타그램, 카카오톡 등 원하는 곳에 올릴 수 있어요.</p>
+        </div>
+
+        <div class="image-dialog-actions">
+          <button type="button" class="secondary-button" id="cancelImageDialog">돌아가기</button>
+          <a class="primary-button image-download-button is-disabled" id="imageDownload" aria-disabled="true">PNG 이미지 저장</a>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260625-2"></script>
+  <script src="app.js?v=20260625-save1"></script>
 </body>
 </html>
