@@ -93,6 +93,9 @@ function renderBooks() {
         <span class="cover-author">${escapeHTML(book.author)}</span>
       </div>
       <div class="book-info">
+        <button class="share-book" data-share-id="${book.id}" aria-label="${escapeHTML(book.title)} 이미지 공유" title="이미지 공유">
+          <span aria-hidden="true">↗</span>
+        </button>
         <span class="status-label">${statusName(book.status)}</span>
         <h3>${escapeHTML(book.title)}</h3>
         <p class="author">${escapeHTML(book.author)}</p>
@@ -149,6 +152,165 @@ function showToast(message) {
   els.toast.classList.add("show");
   clearTimeout(showToast.timeout);
   showToast.timeout = setTimeout(() => els.toast.classList.remove("show"), 2200);
+}
+
+function roundRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
+  const paragraphs = String(text || "").split("\n");
+  const lines = [];
+
+  paragraphs.forEach(paragraph => {
+    let line = "";
+    for (const char of paragraph) {
+      const testLine = line + char;
+      if (ctx.measureText(testLine).width > maxWidth && line) {
+        lines.push(line.trim());
+        line = char;
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) lines.push(line.trim());
+  });
+
+  const visibleLines = lines.slice(0, maxLines);
+  visibleLines.forEach((line, index) => {
+    const needsEllipsis = index === maxLines - 1 && lines.length > maxLines;
+    ctx.fillText(needsEllipsis ? `${line.replace(/[.。…]+$/, "")}…` : line, x, y + index * lineHeight);
+  });
+
+  return y + visibleLines.length * lineHeight;
+}
+
+async function shareReviewImage(book) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+
+  const background = ctx.createLinearGradient(0, 0, 1080, 1350);
+  background.addColorStop(0, "#111b42");
+  background.addColorStop(0.46, "#071326");
+  background.addColorStop(1, "#050914");
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, 1080, 1350);
+
+  const seed = [...book.title].reduce((sum, char) => sum + char.charCodeAt(0), 17);
+  for (let index = 0; index < 150; index += 1) {
+    const x = (seed * (index + 19) * 47) % 1080;
+    const y = (seed * (index + 31) * 73) % 1350;
+    const radius = index % 13 === 0 ? 2.3 : index % 5 === 0 ? 1.5 : 0.8;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = index % 7 === 0 ? "rgba(255,229,169,.78)" : "rgba(225,235,255,.7)";
+    ctx.fill();
+  }
+
+  ctx.save();
+  ctx.shadowColor = "rgba(255,236,197,.48)";
+  ctx.shadowBlur = 55;
+  ctx.fillStyle = "#f4e7c8";
+  ctx.beginPath();
+  ctx.arc(876, 150, 66, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = "#efbd58";
+  ctx.font = '800 27px "Apple SD Gothic Neo", sans-serif';
+  ctx.letterSpacing = "4px";
+  ctx.fillText("책갈피 · READING NOTE", 82, 108);
+  ctx.letterSpacing = "0px";
+
+  ctx.fillStyle = "#f8f3e8";
+  ctx.font = '700 76px Georgia, "Noto Serif KR", serif';
+  const titleBottom = drawWrappedText(ctx, book.title, 82, 230, 820, 92, 3);
+
+  ctx.fillStyle = "#acb8ca";
+  ctx.font = '500 31px "Apple SD Gothic Neo", sans-serif';
+  ctx.fillText(book.author, 86, titleBottom + 22);
+
+  const cardY = Math.max(485, titleBottom + 78);
+  const cardHeight = 1350 - cardY - 92;
+  roundRectPath(ctx, 64, cardY, 952, cardHeight, 32);
+  ctx.fillStyle = "rgba(16, 31, 54, .88)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(221, 232, 250, .2)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = book.color || "#bd604c";
+  roundRectPath(ctx, 100, cardY + 46, 14, 112, 7);
+  ctx.fill();
+
+  ctx.fillStyle = "#ee846f";
+  ctx.font = '800 24px "Apple SD Gothic Neo", sans-serif';
+  ctx.fillText(statusName(book.status), 144, cardY + 82);
+
+  ctx.fillStyle = "#efbd58";
+  ctx.font = '32px Arial, sans-serif';
+  ctx.fillText("★".repeat(book.rating) + "☆".repeat(5 - book.rating), 144, cardY + 137);
+
+  ctx.strokeStyle = "rgba(221, 232, 250, .15)";
+  ctx.beginPath();
+  ctx.moveTo(100, cardY + 194);
+  ctx.lineTo(980, cardY + 194);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f7f2e8";
+  ctx.font = '500 40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  const review = book.review || "이 책에 대한 나의 기록을 남겼어요.";
+  const reviewBottom = drawWrappedText(ctx, review, 106, cardY + 265, 852, 60, 6);
+
+  if (book.quote) {
+    const quoteY = Math.min(reviewBottom + 62, cardY + cardHeight - 180);
+    ctx.fillStyle = "#efbd58";
+    ctx.font = '700 55px Georgia, serif';
+    ctx.fillText("“", 100, quoteY);
+    ctx.fillStyle = "#c5cede";
+    ctx.font = 'italic 31px Georgia, "Noto Serif KR", serif';
+    drawWrappedText(ctx, book.quote, 154, quoteY - 7, 790, 48, 3);
+  }
+
+  ctx.fillStyle = "rgba(215,225,241,.55)";
+  ctx.font = '500 22px "Apple SD Gothic Neo", sans-serif';
+  ctx.fillText("oddpennine.github.io/book-review-site", 100, cardY + cardHeight - 48);
+
+  try {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 0.95));
+    if (!blob) throw new Error("이미지를 만들지 못했어요.");
+
+    const safeTitle = book.title.replace(/[\\/:*?"<>|]/g, "-").slice(0, 60) || "독서기록";
+    const file = new File([blob], `${safeTitle}-책갈피.png`, { type: "image/png" });
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: `${book.title} · 책갈피`,
+        text: `${book.title} — ${book.author}`
+      });
+      showToast("공유 메뉴를 열었어요.");
+    } else {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast("공유 이미지를 PNG로 저장했어요.");
+    }
+  } catch (error) {
+    if (error.name !== "AbortError") showToast("이미지를 만드는 중 문제가 생겼어요.");
+  }
 }
 
 function renderStats() {
@@ -219,11 +381,20 @@ document.querySelectorAll("#colorPicker button").forEach(button => {
 });
 
 els.bookGrid.addEventListener("click", event => {
+  const shareButton = event.target.closest(".share-book");
+  if (shareButton) {
+    event.stopPropagation();
+    const book = books.find(item => item.id === shareButton.dataset.shareId);
+    if (book) shareReviewImage(book);
+    return;
+  }
+
   const card = event.target.closest(".book-card");
   if (card) openDialog(books.find(book => book.id === card.dataset.id));
 });
 
 els.bookGrid.addEventListener("keydown", event => {
+  if (event.target.closest(".share-book")) return;
   if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
     const card = event.target.closest(".book-card");
