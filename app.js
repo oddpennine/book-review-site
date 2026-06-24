@@ -4,6 +4,7 @@ let books = loadBooks();
 let currentFilter = "all";
 let currentRating = 0;
 let currentColor = "#bd604c";
+let activeImageUrl = "";
 
 const els = {
   bookGrid: document.querySelector("#bookGrid"),
@@ -12,6 +13,11 @@ const els = {
   search: document.querySelector("#searchInput"),
   sort: document.querySelector("#sortSelect"),
   dialog: document.querySelector("#bookDialog"),
+  imageDialog: document.querySelector("#imageDialog"),
+  imagePreviewShell: document.querySelector("#imagePreviewShell"),
+  imagePreview: document.querySelector("#imagePreview"),
+  imageBookTitle: document.querySelector("#imageBookTitle"),
+  imageDownload: document.querySelector("#imageDownload"),
   form: document.querySelector("#bookForm"),
   dialogTitle: document.querySelector("#dialogTitle"),
   deleteBook: document.querySelector("#deleteBook"),
@@ -93,14 +99,15 @@ function renderBooks() {
         <span class="cover-author">${escapeHTML(book.author)}</span>
       </div>
       <div class="book-info">
-        <button class="share-book" data-share-id="${book.id}" aria-label="${escapeHTML(book.title)} 이미지 공유" title="이미지 공유">
-          <span aria-hidden="true">↗</span>
-        </button>
         <span class="status-label">${statusName(book.status)}</span>
         <h3>${escapeHTML(book.title)}</h3>
         <p class="author">${escapeHTML(book.author)}</p>
         <div class="stars" aria-label="별점 ${book.rating}점">${starMarkup(book.rating)}</div>
         <p class="review-preview">${escapeHTML(book.review || book.quote || "아직 감상을 남기지 않았어요.")}</p>
+        <button class="save-image-button" data-save-image-id="${book.id}" aria-label="${escapeHTML(book.title)} 이미지 저장">
+          <span aria-hidden="true">↓</span>
+          이미지 저장
+        </button>
       </div>
     </article>
   `).join("");
@@ -192,7 +199,7 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
   return y + visibleLines.length * lineHeight;
 }
 
-async function shareReviewImage(book) {
+async function createReviewImage(book) {
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1350;
@@ -285,32 +292,47 @@ async function shareReviewImage(book) {
   ctx.font = '500 22px "Apple SD Gothic Neo", sans-serif';
   ctx.fillText("oddpennine.github.io/book-review-site", 100, cardY + cardHeight - 48);
 
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 0.95));
+  if (!blob) throw new Error("이미지를 만들지 못했어요.");
+  return blob;
+}
+
+async function openImageSaveDialog(book) {
+  if (activeImageUrl) URL.revokeObjectURL(activeImageUrl);
+  activeImageUrl = "";
+
+  els.imageBookTitle.textContent = book.title;
+  els.imagePreview.alt = `${book.title} 저장 이미지 미리보기`;
+  els.imagePreview.removeAttribute("src");
+  els.imagePreviewShell.classList.add("is-loading");
+  els.imageDownload.removeAttribute("href");
+  els.imageDownload.removeAttribute("download");
+  els.imageDownload.classList.add("is-disabled");
+  els.imageDownload.setAttribute("aria-disabled", "true");
+  els.imageDialog.showModal();
+
   try {
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 0.95));
-    if (!blob) throw new Error("이미지를 만들지 못했어요.");
-
+    const blob = await createReviewImage(book);
+    activeImageUrl = URL.createObjectURL(blob);
     const safeTitle = book.title.replace(/[\\/:*?"<>|]/g, "-").slice(0, 60) || "독서기록";
-    const file = new File([blob], `${safeTitle}-책갈피.png`, { type: "image/png" });
 
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: `${book.title} · 책갈피`,
-        text: `${book.title} — ${book.author}`
-      });
-      showToast("공유 메뉴를 열었어요.");
-    } else {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = file.name;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      showToast("공유 이미지를 PNG로 저장했어요.");
-    }
-  } catch (error) {
-    if (error.name !== "AbortError") showToast("이미지를 만드는 중 문제가 생겼어요.");
+    els.imagePreview.src = activeImageUrl;
+    els.imageDownload.href = activeImageUrl;
+    els.imageDownload.download = `${safeTitle}-책갈피.png`;
+    els.imageDownload.classList.remove("is-disabled");
+    els.imageDownload.setAttribute("aria-disabled", "false");
+    els.imagePreviewShell.classList.remove("is-loading");
+  } catch {
+    closeImageSaveDialog();
+    showToast("이미지를 만드는 중 문제가 생겼어요.");
   }
+}
+
+function closeImageSaveDialog() {
+  els.imageDialog.close();
+  if (activeImageUrl) URL.revokeObjectURL(activeImageUrl);
+  activeImageUrl = "";
+  els.imagePreview.removeAttribute("src");
 }
 
 function renderStats() {
@@ -381,11 +403,11 @@ document.querySelectorAll("#colorPicker button").forEach(button => {
 });
 
 els.bookGrid.addEventListener("click", event => {
-  const shareButton = event.target.closest(".share-book");
-  if (shareButton) {
+  const saveImageButton = event.target.closest(".save-image-button");
+  if (saveImageButton) {
     event.stopPropagation();
-    const book = books.find(item => item.id === shareButton.dataset.shareId);
-    if (book) shareReviewImage(book);
+    const book = books.find(item => item.id === saveImageButton.dataset.saveImageId);
+    if (book) openImageSaveDialog(book);
     return;
   }
 
@@ -394,7 +416,7 @@ els.bookGrid.addEventListener("click", event => {
 });
 
 els.bookGrid.addEventListener("keydown", event => {
-  if (event.target.closest(".share-book")) return;
+  if (event.target.closest(".save-image-button")) return;
   if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
     const card = event.target.closest(".book-card");
@@ -444,9 +466,28 @@ els.search.addEventListener("input", renderBooks);
 els.sort.addEventListener("change", renderBooks);
 document.querySelector("#closeDialog").addEventListener("click", closeDialog);
 document.querySelector("#cancelDialog").addEventListener("click", closeDialog);
+document.querySelector("#closeImageDialog").addEventListener("click", closeImageSaveDialog);
+document.querySelector("#cancelImageDialog").addEventListener("click", closeImageSaveDialog);
+
+els.imageDownload.addEventListener("click", event => {
+  if (els.imageDownload.classList.contains("is-disabled")) {
+    event.preventDefault();
+    return;
+  }
+  showToast("PNG 이미지를 저장했어요.");
+});
 
 els.dialog.addEventListener("click", event => {
   if (event.target === els.dialog) closeDialog();
+});
+
+els.imageDialog.addEventListener("click", event => {
+  if (event.target === els.imageDialog) closeImageSaveDialog();
+});
+
+els.imageDialog.addEventListener("cancel", event => {
+  event.preventDefault();
+  closeImageSaveDialog();
 });
 
 document.querySelector("#themeToggle").addEventListener("click", () => {
