@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f1e8" />
+  <title>책갈피 — 나만의 독서 기록</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="책갈피 홈">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>책갈피</span>
+      </a>
+
+      <nav class="main-nav" aria-label="주요 메뉴">
+        <button class="nav-link active" data-section="library">내 서재</button>
+        <button class="nav-link" data-section="insights">독서 통계</button>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-button" id="themeToggle" aria-label="테마 변경" title="테마 변경">
+          <span class="sun-icon" aria-hidden="true">◐</span>
+        </button>
+        <button class="primary-button compact" id="openAddModal">
+          <span aria-hidden="true">＋</span> 새 기록
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow">MY READING ARCHIVE</span>
+          <h1 id="hero-title">읽은 책은 사라져도,<br /><em>문장은 남으니까.</em></h1>
+          <p>읽고 있는 책부터 오래 간직하고 싶은 한 문장까지.<br />나만의 속도로 독서의 시간을 기록해 보세요.</p>
+          <button class="text-button" id="heroAddButton">오늘의 독서 기록 남기기 <span>→</span></button>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="sun-orbit"></div>
+          <div class="book-stack">
+            <div class="stack-book book-1"><span>사유의<br />방</span></div>
+            <div class="stack-book book-2"><span>밤의<br />문장들</span></div>
+            <div class="stack-book book-3"><span>천천히<br />읽는 마음</span></div>
+          </div>
+          <span class="floating-note">“좋은 문장은<br />오래 머문다.”</span>
+        </div>
+      </section>
+
+      <section class="dashboard" id="librarySection" aria-labelledby="library-title">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">LIBRARY</span>
+            <h2 id="library-title">나의 서재</h2>
+          </div>
+          <p id="bookCountText">책장을 정리하는 중이에요.</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="filter-tabs" role="tablist" aria-label="독서 상태 필터">
+            <button class="filter-chip active" data-filter="all" role="tab" aria-selected="true">전체</button>
+            <button class="filter-chip" data-filter="reading" role="tab" aria-selected="false">읽는 중</button>
+            <button class="filter-chip" data-filter="finished" role="tab" aria-selected="false">다 읽음</button>
+            <button class="filter-chip" data-filter="wishlist" role="tab" aria-selected="false">읽고 싶음</button>
+          </div>
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="searchInput" type="search" placeholder="제목이나 작가로 검색" autocomplete="off" />
+          </label>
+          <select id="sortSelect" class="sort-select" aria-label="정렬 기준">
+            <option value="recent">최근 기록순</option>
+            <option value="rating">별점 높은순</option>
+            <option value="title">제목순</option>
+          </select>
+        </div>
+
+        <div class="book-grid" id="bookGrid" aria-live="polite"></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <div class="empty-illustration" aria-hidden="true">⌇</div>
+          <h3>아직 이 책장은 비어 있어요.</h3>
+          <p>새로운 독서 기록으로 첫 칸을 채워보세요.</p>
+          <button class="primary-button" id="emptyAddButton">첫 기록 남기기</button>
+        </div>
+      </section>
+
+      <section class="insights" id="insightsSection" aria-labelledby="insights-title" hidden>
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">INSIGHTS</span>
+            <h2 id="insights-title">나의 독서 통계</h2>
+          </div>
+          <p>기록이 쌓일수록 취향이 또렷해져요.</p>
+        </div>
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="insight-card">
+          <div>
+            <span class="section-kicker">READING MOOD</span>
+            <h3>요즘 나의 독서 취향</h3>
+            <p id="moodCopy">기록을 분석하고 있어요.</p>
+          </div>
+          <div class="rating-distribution" id="ratingDistribution"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© <span id="year"></span> 책갈피</span>
+      <p>읽고, 느끼고, 오래 간직하기.</p>
+    </footer>
+  </div>
+
+  <dialog class="book-dialog" id="bookDialog">
+    <form id="bookForm" method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <span class="section-kicker">NEW NOTE</span>
+          <h2 id="dialogTitle">새 독서 기록</h2>
+        </div>
+        <button type="button" class="close-button" id="closeDialog" aria-label="닫기">×</button>
+      </div>
+
+      <input type="hidden" id="bookId" />
+      <div class="form-grid">
+        <label class="field full">
+          <span>책 제목 <b>*</b></span>
+          <input id="titleInput" name="title" required placeholder="어떤 책을 읽고 있나요?" />
+        </label>
+        <label class="field">
+          <span>작가 <b>*</b></span>
+          <input id="authorInput" name="author" required placeholder="작가 이름" />
+        </label>
+        <label class="field">
+          <span>독서 상태</span>
+          <select id="statusInput" name="status">
+            <option value="reading">읽는 중</option>
+            <option value="finished">다 읽음</option>
+            <option value="wishlist">읽고 싶음</option>
+          </select>
+        </label>
+        <fieldset class="field full rating-field">
+          <legend>나의 별점</legend>
+          <div class="star-picker" id="starPicker" aria-label="별점 선택">
+            <button type="button" data-rating="1" aria-label="1점">★</button>
+            <button type="button" data-rating="2" aria-label="2점">★</button>
+            <button type="button" data-rating="3" aria-label="3점">★</button>
+            <button type="button" data-rating="4" aria-label="4점">★</button>
+            <button type="button" data-rating="5" aria-label="5점">★</button>
+          </div>
+          <input type="hidden" id="ratingInput" value="0" />
+        </fieldset>
+        <label class="field full">
+          <span>한 줄 감상</span>
+          <textarea id="reviewInput" name="review" rows="4" placeholder="마음에 남은 생각을 자유롭게 적어보세요."></textarea>
+        </label>
+        <label class="field full">
+          <span>기억하고 싶은 문장</span>
+          <input id="quoteInput" name="quote" placeholder="책 속 한 문장을 적어두세요." />
+        </label>
+        <fieldset class="field full color-field">
+          <legend>책 표지 색상</legend>
+          <div class="color-picker" id="colorPicker">
+            <button type="button" class="selected" data-color="#bd604c" style="--swatch:#bd604c" aria-label="테라코타"></button>
+            <button type="button" data-color="#334b3f" style="--swatch:#334b3f" aria-label="포레스트"></button>
+            <button type="button" data-color="#ddaa4b" style="--swatch:#ddaa4b" aria-label="머스터드"></button>
+            <button type="button" data-color="#566b86" style="--swatch:#566b86" aria-label="슬레이트 블루"></button>
+            <button type="button" data-color="#7d5a6d" style="--swatch:#7d5a6d" aria-label="플럼"></button>
+          </div>
+          <input type="hidden" id="colorInput" value="#bd604c" />
+        </fieldset>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="delete-button" id="deleteBook" hidden>기록 삭제</button>
+        <span class="action-spacer"></span>
+        <button type="button" class="secondary-button" id="cancelDialog">취소</button>
+        <button type="submit" class="primary-button">기록 저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
